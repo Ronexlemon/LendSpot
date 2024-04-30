@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
+import {IERC20}from  "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /**
  * @title DSC ENGINE
  * @author Ronex
@@ -19,12 +20,18 @@ contract DSCEngine{
     error NeedMoreThanZero();
     error LengthNotMatch();
     error TokenNotAllowed();
+    error TransferFailed();
+
+
+    event CollateralDeposited(address sender,address collateral,uint256 amout);
 
     //////////////////////////
     //state Variables /////
     ////////////////
 
 mapping(address token => address priceFeed)private s_PriceFeeds ;//token to price feed
+
+mapping(address user => mapping(address token => uint256 amout))private s_CollateralDeposited;
 
 
 DecentralizedStableCoin private immutable IDSCStableCoin;
@@ -80,7 +87,15 @@ DecentralizedStableCoin private immutable IDSCStableCoin;
      * @param _amount  The amount of Collateral to deposit
      */
     function depositCollateral(address _tokenCollateralAddress,
-    uint256 _amount)external moreThanZero(_amount){
+    uint256 _amount)external moreThanZero(_amount) isAllowedToken(_tokenCollateralAddress) {
+        s_CollateralDeposited[msg.sender][_tokenCollateralAddress] +=_amount;
+
+        emit CollateralDeposited(msg.sender,_tokenCollateralAddress,_amount); 
+       bool success = IERC20(_tokenCollateralAddress).transferFrom(msg.sender,address(this),_amount);
+       if(!success){
+           revert TransferFailed();
+       }
+
 
 
 
